@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#08080c">
+<title>Lumen</title>
+<link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+<div class="glow" id="glow"></div>
+
+<main>
+  <header>
+    <span class="brand">lumen</span>
+    <button class="status" id="status" aria-label="Connessione">
+      <i class="dot" id="dot"></i><span id="stxt">Non connesso</span>
+    </button>
+  </header>
+
+  <section class="stage">
+    <div class="wheel" id="wheel">
+      <div class="ring"></div>
+      <div class="knob" id="knob"></div>
+      <button class="power" id="power" aria-label="Accendi o spegni">
+        <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></svg>
+      </button>
+    </div>
+  </section>
+
+  <section class="ctl">
+    <div class="field">
+      <span>Luminosità</span><b id="bv">100</b>
+    </div>
+    <input type="range" id="br" min="1" max="100" value="100">
+
+    <div class="chips" id="whites"></div>
+  </section>
+
+  <section class="ctl">
+    <div class="field"><span>Effetti</span><b id="fxname">—</b></div>
+    <div class="chips scroll" id="fx"></div>
+    <div id="speedbox" class="hidden">
+      <div class="field"><span>Velocità</span><b id="sv">50</b></div>
+      <input type="range" id="sp" min="0" max="100" value="50">
+    </div>
+  </section>
+
+  <section class="ctl">
+    <div class="field"><span>Preferiti</span><b class="hint">tieni premuto per eliminare</b></div>
+    <div class="chips" id="presets"></div>
+  </section>
+</main>
+
+<div class="sheet hidden" id="sheet">
+  <div class="panel">
+    <h2>Connetti le strisce</h2>
+    <p>Chiudi l'app Lotus Lantern, accendi le strisce e tieni il telefono vicino.</p>
+    <button class="big" id="scan">Cerca ELK-BLEDOM</button>
+    <button class="ghost" id="scanall">Non si trova? Mostra tutti i dispositivi</button>
+    <button class="ghost" id="close">Annulla</button>
+  </div>
+</div>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
