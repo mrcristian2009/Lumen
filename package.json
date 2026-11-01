@@ -1,7 +1,7 @@
 {
-  "name": "lumen-led",
+  "name": "lumen-mrcristian",
   "private": true,
-  "version": "2.0.0",
+  "version": "3.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
@@ -12,7 +12,8 @@
   "dependencies": {
     "@capacitor-community/bluetooth-le": "^8.3.0",
     "@capacitor/android": "^8.6.0",
-    "@capacitor/core": "^8.6.0"
+    "@capacitor/core": "^8.6.0",
+    "@capacitor/app": "^8.0.0"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.6.0",
