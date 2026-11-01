@@ -1,7 +1,7 @@
 {
-  "name": "Lumen — Light, reimagined",
+  "name": "Lumen 3.0 \u2014 MRCRISTIAN Edition",
   "short_name": "Lumen",
-  "description": "Controllo intelligente per strisce LED Bluetooth.",
+  "description": "Premium LED control studio",
   "id": "/",
   "start_url": "/",
   "scope": "/",
@@ -9,5 +9,19 @@
   "orientation": "any",
   "background_color": "#08090d",
   "theme_color": "#08090d",
-  "icons": [{"src":"/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Apri Lumen",
+      "short_name": "Lumen",
+      "url": "/"
+    }
+  ]
 }
