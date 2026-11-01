@@ -1,233 +1,49 @@
+// MRCRISTIAN COPYRIGHT — Lumen 2.0 application core
 import { BleClient, numbersToDataView } from '@capacitor-community/bluetooth-le';
-
 const $ = id => document.getElementById(id);
 const root = document.documentElement;
-
-// ---------- protocollo ELK-BLEDOM (Lotus Lantern) ----------
 const uuid = s => `0000${s}-0000-1000-8000-00805f9b34fb`;
-const PAIRS = [
-  { svc: uuid('fff0'), chr: uuid('fff3') },
-  { svc: uuid('ffe5'), chr: uuid('ffe9') },
-];
+const PAIRS = [{svc:uuid('fff0'),chr:uuid('fff3')},{svc:uuid('ffe5'),chr:uuid('ffe9')}];
 const CMD = {
-  on:    () => [0x7e, 0x00, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xef],
-  off:   () => [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef],
-  rgb:   (r, g, b) => [0x7e, 0x00, 0x05, 0x03, r, g, b, 0x00, 0xef],
-  bri:   v => [0x7e, 0x00, 0x01, v, 0x00, 0x00, 0x00, 0x00, 0xef],
-  fx:    e => [0x7e, 0x00, 0x03, e, 0x03, 0x00, 0x00, 0x00, 0xef],
-  speed: v => [0x7e, 0x00, 0x02, v, 0x00, 0x00, 0x00, 0x00, 0xef],
+  on:()=>[0x7e,0x00,0x04,0xf0,0x00,0x01,0xff,0x00,0xef],
+  off:()=>[0x7e,0x00,0x04,0x00,0x00,0x00,0xff,0x00,0xef],
+  rgb:(r,g,b)=>[0x7e,0x00,0x05,0x03,r,g,b,0x00,0xef],
+  bri:v=>[0x7e,0x00,0x01,v,0x00,0x00,0x00,0x00,0xef],
+  fx:e=>[0x7e,0x00,0x03,e,0x03,0x00,0x00,0x00,0xef],
+  speed:v=>[0x7e,0x00,0x02,v,0x00,0x00,0x00,0x00,0xef]
 };
-// Codici tipici della famiglia; i nomi sono indicativi e vanno verificati sul tuo modello
-const EFFECTS = [
-  [0x80, 'Fade RGB'], [0x81, 'Fade 3 colori'], [0x82, 'Fade 7 colori'],
-  [0x8a, 'Blink 7 colori'], [0x92, 'Cambio 7 colori'], [0x96, 'Arcobaleno'],
-  [0x83, 'Blink rosso'], [0x84, 'Blink verde'], [0x85, 'Blink blu'],
-  [0x8b, 'Pulse rosso'], [0x8c, 'Pulse verde'], [0x8d, 'Pulse blu'],
-];
-
-// ---------- stato ----------
-const store = {
-  get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
-};
-let deviceId = store.get('deviceId', null);
-let chr = null;
-let hue = store.get('hue', 0);
-let sat = store.get('sat', 1);
-let powered = store.get('powered', true);
-let busy = false;
-
-// ---------- invio con coda "ultimo vince" (evita di inondare il BLE mentre trascini) ----------
-let pending = null, sending = false;
-async function send(bytes) {
-  pending = bytes;
-  if (sending || !chr) return;
-  sending = true;
-  while (pending) {
-    const b = pending; pending = null;
-    try { await BleClient.writeWithoutResponse(deviceId, chr.svc, chr.chr, numbersToDataView(b)); }
-    catch { /* connessione persa: gestita da onDisconnect */ }
-    await new Promise(r => setTimeout(r, 25));
-  }
-  sending = false;
-}
-// comandi "una tantum" (accensione, effetti...) non devono sovrascriversi a vicenda
-const queue = [];
-let draining = false;
-async function sendNow(bytes) {
-  queue.push(bytes);
-  if (draining || !chr) return;
-  draining = true;
-  while (queue.length) {
-    try { await BleClient.writeWithoutResponse(deviceId, chr.svc, chr.chr, numbersToDataView(queue.shift())); }
-    catch {}
-    await new Promise(r => setTimeout(r, 40));
-  }
-  draining = false;
-}
-
-// ---------- colore ----------
-function hsv2rgb(h, s, v = 1) {
-  const f = n => { const k = (n + h / 60) % 6; return v - v * s * Math.max(0, Math.min(k, 4 - k, 1)); };
-  return [f(5), f(3), f(1)].map(x => Math.round(x * 255));
-}
-const toHex = ([r, g, b]) => '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
-function fromHex(h) {
-  const [r, g, b] = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
-  const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
-  let H = 0;
-  if (d) H = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
-  return { h: (H * 60 + 360) % 360, s: max ? d / max : 0 };
-}
-
-const wheel = $('wheel'), knob = $('knob');
-function paint() {
-  const hex = toHex(hsv2rgb(hue, sat));
-  root.style.setProperty('--c', hex);
-  const R = wheel.clientWidth / 2, r = R * 0.815;
-  const a = (hue - 90) * Math.PI / 180;
-  knob.style.left = `${R + r * Math.cos(a) - 15}px`;
-  knob.style.top = `${R + r * Math.sin(a) - 15}px`;
-  document.body.classList.toggle('off', !powered);
-}
-function applyColor(immediate = false) {
-  paint();
-  const rgb = hsv2rgb(hue, sat);
-  powered = true; document.body.classList.remove('off');
-  immediate ? sendNow(CMD.rgb(...rgb)) : send(CMD.rgb(...rgb));
-}
-
-function pointerHue(e) {
-  const b = wheel.getBoundingClientRect();
-  const x = e.clientX - (b.left + b.width / 2), y = e.clientY - (b.top + b.height / 2);
-  hue = (Math.atan2(y, x) * 180 / Math.PI + 90 + 360) % 360;
-  sat = 1; selectWhite(null);
-  applyColor();
-}
-let dragging = false;
-wheel.addEventListener('pointerdown', e => {
-  if (e.target.closest('.power')) return;
-  dragging = true; wheel.setPointerCapture(e.pointerId); pointerHue(e);
-});
-wheel.addEventListener('pointermove', e => { if (dragging) pointerHue(e); });
-const endDrag = () => { if (dragging) { dragging = false; store.set('hue', hue); store.set('sat', sat); } };
-wheel.addEventListener('pointerup', endDrag);
-wheel.addEventListener('pointercancel', endDrag);
-
-// ---------- accensione ----------
-$('power').onclick = () => {
-  powered = !powered; store.set('powered', powered);
-  paint(); sendNow(powered ? CMD.on() : CMD.off());
-};
-
-// ---------- luminosità / velocità ----------
-$('br').value = store.get('bri', 100); $('bv').textContent = $('br').value;
-$('br').oninput = e => { $('bv').textContent = e.target.value; store.set('bri', +e.target.value); send(CMD.bri(+e.target.value)); };
-$('sp').oninput = e => { $('sv').textContent = e.target.value; send(CMD.speed(+e.target.value)); };
-
-// ---------- bianchi ----------
-const WHITES = [['Caldo', '#ffb46b'], ['Neutro', '#ffe6c7'], ['Freddo', '#cfe3ff']];
-function selectWhite(name) {
-  [...$('whites').children].forEach(c => c.classList.toggle('sel', c.dataset.n === name));
-}
-WHITES.forEach(([n, hex]) => {
-  const b = document.createElement('button');
-  b.className = 'chip'; b.textContent = n; b.dataset.n = n;
-  b.onclick = () => {
-    const rgb = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
-    ({ h: hue, s: sat } = fromHex(hex)); paint(); selectWhite(n);
-    powered = true; sendNow(CMD.rgb(...rgb));
-  };
-  $('whites').appendChild(b);
-});
-
-// ---------- effetti ----------
-let fxSel = null;
-EFFECTS.forEach(([code, name]) => {
-  const b = document.createElement('button');
-  b.className = 'chip'; b.textContent = name;
-  b.onclick = () => {
-    fxSel = fxSel === code ? null : code;
-    [...$('fx').children].forEach(c => c.classList.toggle('sel', c === b && fxSel !== null));
-    $('fxname').textContent = fxSel ? name : '—';
-    $('speedbox').classList.toggle('hidden', !fxSel);
-    if (fxSel) sendNow(CMD.fx(code)); else applyColor(true);
-  };
-  $('fx').appendChild(b);
-});
-
-// ---------- preferiti ----------
-function renderPresets() {
-  const box = $('presets'); box.innerHTML = '';
-  const list = store.get('presets', ['#ff2a2a', '#7c3aed', '#06b6d4']);
-  list.forEach((hex, i) => {
-    const b = document.createElement('button');
-    b.className = 'sw'; b.style.background = hex;
-    let t;
-    b.onpointerdown = () => { t = setTimeout(() => { t = null; list.splice(i, 1); store.set('presets', list); renderPresets(); }, 650); };
-    b.onpointerup = b.onpointerleave = () => { if (t) { clearTimeout(t); t = null; ({ h: hue, s: sat } = fromHex(hex)); selectWhite(null); applyColor(true); } };
-    box.appendChild(b);
-  });
-  const add = document.createElement('button');
-  add.className = 'sw add'; add.textContent = '+'; add.setAttribute('aria-label', 'Salva colore');
-  add.onclick = () => { list.push(toHex(hsv2rgb(hue, sat))); store.set('presets', list); renderPresets(); };
-  box.appendChild(add);
-}
-renderPresets();
-
-// ---------- connessione ----------
-const setStatus = (txt, cls = '') => {
-  $('stxt').textContent = txt;
-  $('status').className = 'status ' + cls;
-};
-
-async function findChar(id) {
-  const services = await BleClient.getServices(id);
-  for (const p of PAIRS) {
-    const s = services.find(s => s.uuid.toLowerCase() === p.svc);
-    if (s && s.characteristics.some(c => c.uuid.toLowerCase() === p.chr)) return p;
-  }
-  throw new Error('Caratteristica di scrittura non trovata');
-}
-
-async function open(id) {
-  setStatus('Connessione…', 'busy');
-  await BleClient.connect(id, () => { chr = null; setStatus('Disconnesso'); });
-  chr = await findChar(id);
-  deviceId = id; store.set('deviceId', id);
-  setStatus('Connesso', 'on');
-  // riallinea le strisce allo stato mostrato nell'app
-  sendNow(powered ? CMD.on() : CMD.off());
-  if (powered) sendNow(CMD.rgb(...hsv2rgb(hue, sat)));
-  sendNow(CMD.bri(+$('br').value));
-}
-
-async function pick(all) {
-  if (busy) return; busy = true;
-  try {
-    await BleClient.initialize();
-    const opts = all ? {} : { namePrefix: 'ELK' };
-    const dev = await BleClient.requestDevice({ ...opts, optionalServices: PAIRS.map(p => p.svc) });
-    $('sheet').classList.add('hidden');
-    await open(dev.deviceId);
-  } catch (e) {
-    setStatus(String(e?.message || e).slice(0, 38) || 'Errore');
-  } finally { busy = false; }
-}
-
-$('status').onclick = async () => {
-  if (chr) { await BleClient.disconnect(deviceId).catch(() => {}); chr = null; setStatus('Disconnesso'); return; }
-  $('sheet').classList.remove('hidden');
-};
-$('scan').onclick = () => pick(false);
-$('scanall').onclick = () => pick(true);
-$('close').onclick = () => $('sheet').classList.add('hidden');
-
-// ---------- avvio ----------
-paint();
-(async () => {
-  if (!deviceId) return;
-  try { await BleClient.initialize(); await open(deviceId); }
-  catch { setStatus('Non connesso'); }
-})();
-window.addEventListener('resize', paint);
+const EFFECTS=[[0x80,'Fade RGB'],[0x81,'Fade 3 colori'],[0x82,'Fade 7 colori'],[0x8a,'Blink 7 colori'],[0x92,'Cambio 7 colori'],[0x96,'Arcobaleno'],[0x83,'Blink rosso'],[0x84,'Blink verde'],[0x85,'Blink blu'],[0x8b,'Pulse rosso'],[0x8c,'Pulse verde'],[0x8d,'Pulse blu']];
+const store={get(k,d){try{return JSON.parse(localStorage.getItem('lumen:'+k))??d}catch{return d}},set(k,v){try{localStorage.setItem('lumen:'+k,JSON.stringify(v))}catch{}}};
+let deviceId=store.get('deviceId',null),chr=null,hue=store.get('hue',345),sat=store.get('sat',.78),powered=store.get('powered',true),busy=false,fxSel=null;
+let pending=null,sending=false;const queue=[];let draining=false;
+function toast(msg){const el=$('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('show'),2300)}
+async function send(bytes){pending=bytes;if(sending||!chr)return;sending=true;while(pending){const b=pending;pending=null;try{await BleClient.writeWithoutResponse(deviceId,chr.svc,chr.chr,numbersToDataView(b))}catch{break}await new Promise(r=>setTimeout(r,28))}sending=false}
+async function sendNow(bytes){queue.push(bytes);if(draining||!chr)return;draining=true;while(queue.length){try{await BleClient.writeWithoutResponse(deviceId,chr.svc,chr.chr,numbersToDataView(queue.shift()))}catch{break}await new Promise(r=>setTimeout(r,40))}draining=false}
+function hsv2rgb(h,s,v=1){const f=n=>{const k=(n+h/60)%6;return v-v*s*Math.max(0,Math.min(k,4-k,1))};return[f(5),f(3),f(1)].map(x=>Math.round(x*255))}
+const toHex=rgb=>'#'+rgb.map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
+function fromHex(hex){const [r,g,b]=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255);const max=Math.max(r,g,b),min=Math.min(r,g,b),d=max-min;let H=0;if(d)H=max===r?((g-b)/d)%6:max===g?(b-r)/d+2:(r-g)/d+4;return{h:(H*60+360)%360,s:max?d/max:0}}
+const wheel=$('wheel'),knob=$('knob');
+function paint(){const hex=toHex(hsv2rgb(hue,sat));root.style.setProperty('--accent',hex);$('hexValue').textContent=hex;$('colorPreview').style.background=hex;const R=wheel.clientWidth/2,r=R*.83,a=(hue-90)*Math.PI/180;knob.style.left=`${R+r*Math.cos(a)-12}px`;knob.style.top=`${R+r*Math.sin(a)-12}px`;wheel.setAttribute('aria-valuenow',Math.round(hue));document.body.classList.toggle('off',!powered);$('power').setAttribute('aria-pressed',String(powered))}
+function applyColor(immediate=false){powered=true;paint();const rgb=hsv2rgb(hue,sat);(immediate?sendNow:send)(CMD.rgb(...rgb));store.set('powered',true);store.set('hue',hue);store.set('sat',sat)}
+function selectHue(e){const b=wheel.getBoundingClientRect(),x=e.clientX-(b.left+b.width/2),y=e.clientY-(b.top+b.height/2);hue=(Math.atan2(y,x)*180/Math.PI+90+360)%360;sat=1;document.querySelectorAll('#whites .chip').forEach(c=>c.classList.remove('sel'));applyColor()}
+let dragging=false;wheel.addEventListener('pointerdown',e=>{if(e.target.closest('.power-button'))return;dragging=true;wheel.setPointerCapture(e.pointerId);selectHue(e)});wheel.addEventListener('pointermove',e=>{if(dragging)selectHue(e)});['pointerup','pointercancel','lostpointercapture'].forEach(n=>wheel.addEventListener(n,()=>dragging=false));wheel.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='ArrowUp'){hue=(hue+5)%360;applyColor();e.preventDefault()}if(e.key==='ArrowLeft'||e.key==='ArrowDown'){hue=(hue+355)%360;applyColor();e.preventDefault()}});
+$('power').onclick=()=>{powered=!powered;paint();store.set('powered',powered);sendNow(powered?CMD.on():CMD.off())};
+$('br').value=store.get('bri',100);$('bv').textContent=$('br').value+'%';$('br').oninput=e=>{$('bv').textContent=e.target.value+'%';store.set('bri',+e.target.value);send(CMD.bri(+e.target.value))};$('sp').oninput=e=>{$('sv').textContent=e.target.value+'%';send(CMD.speed(+e.target.value))};
+const WHITES=[['Warm','#ffb46b'],['Natural','#ffe6c7'],['Cool','#cfe3ff']];WHITES.forEach(([name,hex])=>{const b=document.createElement('button');b.className='chip';b.textContent=name;b.onclick=()=>{({h:hue,s:sat}=fromHex(hex));document.querySelectorAll('#whites .chip').forEach(c=>c.classList.toggle('sel',c===b));paint();powered=true;sendNow(CMD.rgb(...[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16))))};$('whites').append(b)});
+EFFECTS.forEach(([code,name])=>{const b=document.createElement('button');b.className='effect-chip';b.textContent=name;b.onclick=()=>{fxSel=fxSel===code?null:code;document.querySelectorAll('.effect-chip').forEach(c=>c.classList.toggle('sel',c===b&&fxSel!==null));$('speedbox').classList.toggle('hidden',fxSel===null);if(fxSel){$('speedbox').scrollIntoView({behavior:'smooth',block:'nearest'});sendNow(CMD.fx(code))}else applyColor(true)};$('fx').append(b)});
+function setHex(hex){({h:hue,s:sat}=fromHex(hex));paint();applyColor(true);document.querySelectorAll('#whites .chip').forEach(c=>c.classList.remove('sel'))}
+function renderPresets(){const box=$('presets');box.innerHTML='';const list=store.get('presets',['#FF3B6B','#8067FF','#26C6DA']);list.forEach((hex,i)=>{const b=document.createElement('button');b.className='swatch';b.style.background=hex;b.title=hex;b.setAttribute('aria-label','Colore '+hex);let timer;b.onpointerdown=()=>{timer=setTimeout(()=>{timer=null;list.splice(i,1);store.set('presets',list);renderPresets();toast('Preferito rimosso')},650)};b.onpointerup=b.onpointerleave=()=>{if(timer){clearTimeout(timer);timer=null;setHex(hex)}};box.append(b)});const add=document.createElement('button');add.className='swatch add';add.textContent='+';add.setAttribute('aria-label','Salva colore corrente');add.onclick=()=>{const color=toHex(hsv2rgb(hue,sat));if(!list.includes(color)&&list.length<12){list.push(color);store.set('presets',list);renderPresets();toast('Colore salvato')}else toast('Hai raggiunto 12 preferiti')};box.append(add)}renderPresets();
+document.querySelectorAll('.scene-card').forEach(b=>b.addEventListener('click',()=>setHex(b.dataset.color)));
+$('copyColor').onclick=async()=>{try{await navigator.clipboard.writeText($('hexValue').textContent);toast('Codice colore copiato')}catch{toast($('hexValue').textContent)}};
+function setStatus(txt,cls=''){ $('stxt').textContent=txt;$('status').className='connection-pill '+cls }
+async function findChar(id){const services=await BleClient.getServices(id);for(const p of PAIRS){const s=services.find(x=>x.uuid.toLowerCase()===p.svc);if(s&&s.characteristics.some(c=>c.uuid.toLowerCase()===p.chr))return p}throw new Error('Caratteristica LED non trovata')}
+async function open(id){setStatus('Connessione…','busy');await BleClient.connect(id,()=>{chr=null;setStatus('Disconnesso');toast('Connessione Bluetooth persa')});chr=await findChar(id);deviceId=id;store.set('deviceId',id);setStatus('Connesso','on');sendNow(powered?CMD.on():CMD.off());if(powered)sendNow(CMD.rgb(...hsv2rgb(hue,sat)));sendNow(CMD.bri(+$('br').value));toast('Striscia LED collegata')}
+async function pick(all){if(busy)return;busy=true;try{await BleClient.initialize();const opts=all?{}:{namePrefix:'ELK'};const dev=await BleClient.requestDevice({...opts,optionalServices:PAIRS.map(p=>p.svc)});$('sheet').classList.add('hidden');await open(dev.deviceId)}catch(e){setStatus('Non connesso');toast(String(e?.message||e).slice(0,90))}finally{busy=false}}
+$('status').onclick=()=>{if(chr){BleClient.disconnect(deviceId).catch(()=>{});chr=null;setStatus('Disconnesso');return}$('sheet').classList.remove('hidden')};$('connectCard').onclick=()=>$('sheet').classList.remove('hidden');$('scan').onclick=()=>pick(false);$('scanall').onclick=()=>pick(true);$('close').onclick=()=>$('sheet').classList.add('hidden');$('sheet').addEventListener('click',e=>{if(e.target===$('sheet'))$('sheet').classList.add('hidden')});$('settingsBtn').onclick=()=>toast('Lumen 2.0 · MRCRISTIAN COPYRIGHT');
+// Voice control: Web Speech API where the browser/device exposes it. Not a native Google Assistant integration.
+const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+$('voiceBtn').onclick=()=>{if(!SpeechRecognition){toast('Controllo vocale non supportato da questo browser');return}const rec=new SpeechRecognition();rec.lang='it-IT';rec.interimResults=false;rec.maxAlternatives=1;$('voiceStatus').textContent='Ti ascolto…';toast('Dimmi un comando');rec.onresult=e=>{const text=e.results[0][0].transcript.toLowerCase();$('voiceStatus').textContent=text; if(/spegni|spegni tutto/.test(text)){$('power').click()}else if(/accendi/.test(text)){if(!powered)$('power').click()}else if(/rosso/.test(text))setHex('#ff3030');else if(/blu/.test(text))setHex('#287bff');else if(/verde/.test(text))setHex('#26d07c');else if(/viola/.test(text))setHex('#925cff');else if(/bianco caldo/.test(text))$('whites').children[0].click();else if(/bianco freddo/.test(text))$('whites').children[2].click();else toast('Comando non riconosciuto: '+text)};rec.onerror=()=>{$('voiceStatus').textContent='Parla con Lumen';toast('Microfono non disponibile o permesso negato')};rec.onend=()=>{if($('voiceStatus').textContent==='Ti ascolto…')$('voiceStatus').textContent='Parla con Lumen'};try{rec.start()}catch{toast('Controllo vocale già attivo')}};
+// PWA install prompt. Native BLE remains available in the Capacitor Android build.
+let installPrompt=null;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;$('installBtn').hidden=false});$('installBtn').onclick=async()=>{if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;$('installBtn').hidden=true};
+if('serviceWorker'in navigator&&location.protocol.startsWith('http'))window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
+paint();(async()=>{if(!deviceId)return;try{await BleClient.initialize();await open(deviceId)}catch{setStatus('Non connesso')}})();window.addEventListener('resize',paint);

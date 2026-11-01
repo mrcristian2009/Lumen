@@ -1,67 +1,81 @@
 <!doctype html>
 <html lang="it">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<meta name="theme-color" content="#08080c">
-<title>Lumen</title>
-<link rel="stylesheet" href="/src/style.css">
+  <!-- MRCRISTIAN COPYRIGHT — Lumen 2.0 -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#08090d">
+  <meta name="description" content="Lumen — controllo intelligente per le tue luci LED.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/src/style.css">
+  <title>Lumen — Light, reimagined</title>
 </head>
 <body>
-<div class="glow" id="glow"></div>
+  <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="wordmark" href="#top" aria-label="Lumen home"><span class="brand-mark">✳</span><span>lumen<span class="brand-dot">.</span></span></a>
+      <div class="top-actions">
+        <span class="connection-pill" id="status"><i class="status-dot" id="dot"></i><span id="stxt">Non connesso</span></span>
+        <button class="icon-button" id="installBtn" title="Installa Lumen" aria-label="Installa Lumen" hidden>↓</button>
+        <button class="icon-button" id="settingsBtn" title="Impostazioni" aria-label="Impostazioni">☼</button>
+      </div>
+    </header>
 
-<main>
-  <header>
-    <span class="brand">lumen</span>
-    <button class="status" id="status" aria-label="Connessione">
-      <i class="dot" id="dot"></i><span id="stxt">Non connesso</span>
-    </button>
-  </header>
+    <main id="top">
+      <section class="hero">
+        <div class="eyebrow"><span class="eyebrow-line"></span> YOUR SPACE, YOUR LIGHT</div>
+        <h1>La luce, <span>come la vuoi.</span></h1>
+        <p class="hero-copy">Un piccolo gesto. Un'atmosfera completamente nuova.</p>
+      </section>
 
-  <section class="stage">
-    <div class="wheel" id="wheel">
-      <div class="ring"></div>
-      <div class="knob" id="knob"></div>
-      <button class="power" id="power" aria-label="Accendi o spegni">
-        <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></svg>
-      </button>
-    </div>
-  </section>
+      <section class="control-card glass-card" aria-label="Controllo colore">
+        <div class="card-heading"><div><span class="section-kicker">01 / COLORE</span><h2>Color studio</h2></div><span class="live-label"><i></i> LIVE CONTROL</span></div>
+        <div class="color-stage">
+          <div class="color-orbit" id="wheel" role="slider" aria-label="Selettore colore" aria-valuemin="0" aria-valuemax="360" tabindex="0">
+            <div class="orbit-inner"></div><div class="knob" id="knob"></div>
+            <button class="power-button" id="power" aria-label="Accendi o spegni" aria-pressed="true"><span class="power-glyph">⏻</span><span class="power-caption">POWER</span></button>
+          </div>
+          <div class="color-readout"><span class="color-preview" id="colorPreview"></span><div><strong id="hexValue">#FF3B6B</strong><small>COLORE SELEZIONATO</small></div><button class="copy-color" id="copyColor" aria-label="Copia codice colore">▢</button></div>
+        </div>
+        <div class="control-row"><div class="label-line"><label for="br">Luminosità</label><output id="bv">100%</output></div><input class="range" type="range" id="br" min="1" max="100" value="100"></div>
+        <div class="preset-row" id="whites" aria-label="Tonalità del bianco"></div>
+      </section>
 
-  <section class="ctl">
-    <div class="field">
-      <span>Luminosità</span><b id="bv">100</b>
-    </div>
-    <input type="range" id="br" min="1" max="100" value="100">
+      <section class="section-block">
+        <div class="section-title"><div><span class="section-kicker">02 / ATMOSFERA</span><h2>Scene & moods</h2></div><span class="subtle-note">Scegli il tuo mood</span></div>
+        <div class="scene-grid" id="scenes">
+          <button class="scene-card scene-sunset" data-color="#ff784f"><span class="scene-icon">◒</span><strong>Sunset</strong><small>Caldo · Relax</small></button>
+          <button class="scene-card scene-ocean" data-color="#368dff"><span class="scene-icon">≈</span><strong>Ocean</strong><small>Fresco · Focus</small></button>
+          <button class="scene-card scene-violet" data-color="#9b72ff"><span class="scene-icon">✧</span><strong>Dream</strong><small>Morbido · Soft</small></button>
+          <button class="scene-card scene-forest" data-color="#48d6a0"><span class="scene-icon">❋</span><strong>Nature</strong><small>Verde · Balance</small></button>
+        </div>
+      </section>
 
-    <div class="chips" id="whites"></div>
-  </section>
+      <section class="section-block glass-card compact-card">
+        <div class="section-title"><div><span class="section-kicker">03 / DINAMICA</span><h2>Effetti luminosi</h2></div><span class="effect-count">12 EFFECTS</span></div>
+        <div class="effect-list" id="fx"></div>
+        <div id="speedbox" class="speed-panel hidden"><div class="label-line"><label for="sp">Velocità animazione</label><output id="sv">50%</output></div><input class="range" type="range" id="sp" min="0" max="100" value="50"></div>
+      </section>
 
-  <section class="ctl">
-    <div class="field"><span>Effetti</span><b id="fxname">—</b></div>
-    <div class="chips scroll" id="fx"></div>
-    <div id="speedbox" class="hidden">
-      <div class="field"><span>Velocità</span><b id="sv">50</b></div>
-      <input type="range" id="sp" min="0" max="100" value="50">
-    </div>
-  </section>
+      <section class="section-block glass-card compact-card">
+        <div class="section-title"><div><span class="section-kicker">04 / LA TUA PALETTE</span><h2>Preferiti</h2></div><span class="subtle-note">Tieni premuto per rimuovere</span></div>
+        <div class="favorites" id="presets"></div>
+      </section>
 
-  <section class="ctl">
-    <div class="field"><span>Preferiti</span><b class="hint">tieni premuto per eliminare</b></div>
-    <div class="chips" id="presets"></div>
-  </section>
-</main>
-
-<div class="sheet hidden" id="sheet">
-  <div class="panel">
-    <h2>Connetti le strisce</h2>
-    <p>Chiudi l'app Lotus Lantern, accendi le strisce e tieni il telefono vicino.</p>
-    <button class="big" id="scan">Cerca ELK-BLEDOM</button>
-    <button class="ghost" id="scanall">Non si trova? Mostra tutti i dispositivi</button>
-    <button class="ghost" id="close">Annulla</button>
+      <section class="section-block utility-grid">
+        <button class="utility-card" id="connectCard"><span class="utility-icon">⌁</span><span><strong>Dispositivi</strong><small>Collega via Bluetooth LE</small></span><span class="utility-arrow">↗</span></button>
+        <button class="utility-card" id="voiceBtn"><span class="utility-icon">◉</span><span><strong>Controllo vocale</strong><small id="voiceStatus">Parla con Lumen</small></span><span class="utility-arrow">↗</span></button>
+      </section>
+      <p class="footer-note">Designed for your atmosphere <span>✳</span><br><small>MRCRISTIAN COPYRIGHT · LUMEN 2.0</small></p>
+    </main>
   </div>
-</div>
 
-<script type="module" src="/src/main.js"></script>
+  <div class="modal-backdrop hidden" id="sheet" role="dialog" aria-modal="true" aria-labelledby="connectTitle"><div class="modal glass-card"><button class="modal-close" id="close" aria-label="Chiudi">×</button><div class="modal-symbol">⌁</div><span class="section-kicker">LUMEN CONNECT</span><h2 id="connectTitle">Portiamo la luce online.</h2><p>Chiudi Lotus Lantern, accendi la striscia LED e tieni il telefono nelle vicinanze.</p><button class="primary-button" id="scan">Cerca ELK-BLEDOM <span>→</span></button><button class="secondary-button" id="scanall">Mostra tutti i dispositivi</button><p class="compat-note">Bluetooth LE · Richiede autorizzazione Bluetooth</p></div></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="/src/main.js"></script>
 </body>
 </html>

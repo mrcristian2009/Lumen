@@ -2,6 +2,6 @@
   "appId": "com.mrcristian.lumen",
   "appName": "Lumen",
   "webDir": "dist",
-  "backgroundColor": "#08080c",
-  "android": { "backgroundColor": "#08080c" }
+  "backgroundColor": "#08090d",
+  "android": { "backgroundColor": "#08090d" }
 }

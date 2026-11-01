@@ -1,0 +1,13 @@
+{
+  "name": "Lumen — Light, reimagined",
+  "short_name": "Lumen",
+  "description": "Controllo intelligente per strisce LED Bluetooth.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#08090d",
+  "theme_color": "#08090d",
+  "icons": [{"src":"/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}

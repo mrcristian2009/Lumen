@@ -1,0 +1,4 @@
+MRCRISTIAN COPYRIGHT
+Lumen 2.0 — MRCRISTIAN Edition
+
+Copyright notice requested by the project owner. This marker is included in source files and project documentation. It does not by itself register a copyright or establish ownership over third-party dependencies, fonts, Capacitor, or other external components.
